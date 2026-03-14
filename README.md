@@ -1,36 +1,424 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Лабораторна робота №1
 
-## Getting Started
+**Тема:** Створення проєкту на TypeScript, Next.js та Node.js (SSR)
 
-First, run the development server:
+**Виконав:** Верес Даніїл, група ТР-32
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Дисципліна:** Веб-орієнтована розробка системи екологічного моніторингу
+
+---
+
+## 1. Структура проєкту
+
+```UA
+eco-monitoring/
+├── src/
+│   ├── app/                        # App Router (сторінки та API)
+│   │   ├── layout.tsx              # Головний layout (Header + Footer)
+│   │   ├── page.tsx                # Головна сторінка (SSR)
+│   │   ├── globals.css             # Глобальні стилі
+│   │   ├── about/
+│   │   │   └── page.tsx            # Сторінка "Про проєкт" (SSG)
+│   │   ├── pollutants/
+│   │   │   └── page.tsx            # Довідник забруднювачів (SSG)
+│   │   ├── stations/
+│   │   │   └── [id]/
+│   │   │       └── page.tsx        # Деталі станції (SSR, динамічний роутинг)
+│   │   └── api/
+│   │       ├── stations/
+│   │       │   ├── route.ts        # GET /api/stations — список станцій
+│   │       │   └── [id]/
+│   │       │       └── route.ts    # GET /api/stations/:id — деталі станції
+│   │       ├── measurements/
+│   │       │   └── route.ts        # GET /api/measurements — вимірювання
+│   │       └── current/
+│   │           └── route.ts        # GET /api/current — поточні показники
+│   ├── components/                 # React-компоненти
+│   │   ├── Header.tsx              # Навігаційний header
+│   │   ├── Footer.tsx              # Footer
+│   │   ├── StationCard.tsx         # Картка моніторингової станції
+│   │   ├── AqiGauge.tsx            # Круговий індикатор AQI
+│   │   └── PollutantBar.tsx        # Прогрес-бар концентрації забруднювача
+│   ├── types/                      # TypeScript типи та інтерфейси
+│   │   ├── environment.ts          # Інтерфейси екологічних даних
+│   │   ├── api.ts                  # Типи для API (запити, відповіді, помилки)
+│   │   └── index.ts                # Реекспорт усіх типів
+│   ├── data/                       # Тестові дані
+│   │   ├── stations.ts             # 7 моніторингових станцій
+│   │   ├── measurements.ts         # Генератор часових рядів вимірювань
+│   │   └── pollutants.ts           # Довідник забруднювачів
+│   └── lib/                        # Допоміжні функції
+│       └── aqi.ts                  # Утиліти для роботи з AQI
+├── tsconfig.json                   # Конфігурація TypeScript (strict mode)
+├── next.config.ts                  # Конфігурація Next.js
+├── tailwind.config.ts              # Конфігурація Tailwind CSS
+└── package.json                    # Залежності проєкту
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 2. TypeScript інтерфейси
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Екологічні дані (`src/types/environment.ts`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Інтерфейс | Призначення |
+| --- | --- |
+| `Coordinates` | Географічні координати (latitude, longitude) |
+| `MonitoringStation` | Опис моніторингової станції (назва, тип, адреса, координати, статус) |
+| `AirQualityData` | Концентрації забруднювачів (PM2.5, PM10, NO₂, SO₂, CO, O₃) та індекс AQI |
+| `Measurement` | Окреме вимірювання з часовою міткою та прив'язкою до станції |
+| `TimeSeries` | Часовий ряд вимірювань для станції за період |
+| `PollutantInfo` | Довідкова інформація про забруднювач (ГДК, джерела, вплив на здоров'я) |
+| `StationStats` | Статистика станції (середній/мін/макс AQI, кількість вимірювань) |
 
-## Learn More
+**Типи:**
 
-To learn more about Next.js, take a look at the following resources:
+- `StationType` — тип станції: `"urban" | "suburban" | "rural" | "industrial" | "traffic"`
+- `AQILevel` — рівень AQI: `"good" | "moderate" | "unhealthy_sensitive" | "unhealthy" | "very_unhealthy" | "hazardous"`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### API типи (`src/types/api.ts`)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Тип | Призначення |
+| --- | --- |
+| `ApiResponse<T>` | Узагальнений тип відповіді (success/error) з використанням дженериків |
+| `ApiSuccessResponse<T>` | Успішна відповідь з даними та опціональною пагінацією |
+| `ApiErrorResponse` | Помилка з кодом, повідомленням та деталями |
+| `ApiErrorCode` | Коди помилок: `NOT_FOUND`, `BAD_REQUEST`, `VALIDATION_ERROR`, `INTERNAL_ERROR` |
+| `PaginationMeta` | Метадані пагінації (page, limit, total, totalPages) |
+| `StationsListRequest` | Параметри запиту списку станцій (фільтри, пагінація) |
+| `MeasurementsRequest` | Параметри запиту вимірювань (період, сортування, пагінація) |
 
-## Deploy on Vercel
+## 3. Сторінки з SSR та SSG
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### SSR-сторінки (динамічний серверний рендеринг)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Головна сторінка (`/`)** — `export const dynamic = "force-dynamic"`:
+
+- Завантажує список усіх 7 моніторингових станцій
+- Обчислює загальну статистику якості повітря (середній AQI, кількість станцій за категоріями)
+- Відображає картки станцій з останніми показниками AQI
+
+**Сторінка деталей станції (`/stations/[id]`)** — динамічний роутинг з SSR:
+
+- Використовує `params.id` для пошуку станції
+- Завантажує всі вимірювання станції за 7 днів
+- Відображає: круговий індикатор AQI, прогрес-бари забруднювачів, таблицю останніх вимірювань
+
+### SSG-сторінки (статична генерація)
+
+**Про проєкт (`/about`)** — статична інформаційна сторінка:
+
+- Опис системи, використані технології, можливості, шкала AQI
+
+**Довідник забруднювачів (`/pollutants`)** — статичний довідник:
+
+- Детальний опис 6 забруднювачів (PM2.5, PM10, NO₂, SO₂, CO, O₃)
+- Джерела, вплив на здоров'я, ГДК
+
+## 4. API Endpoints
+
+### GET `/api/stations`
+
+Список моніторингових станцій з фільтрацією та пагінацією.
+
+**Параметри запиту:**
+
+| Параметр | Тип | Опис |
+| --- | --- | --- |
+| `city` | string | Фільтр за містом |
+| `type` | string | Фільтр за типом станції |
+| `isActive` | boolean | Фільтр за статусом |
+| `page` | number | Номер сторінки (за замовчуванням 1) |
+| `limit` | number | Кількість на сторінці (1-50, за замовчуванням 10) |
+
+**Приклад запиту:**
+
+```UA
+GET /api/stations?city=Київ&page=1&limit=5
+```
+
+**Приклад відповіді:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "station-001",
+      "name": "Хрещатик",
+      "coordinates": { "latitude": 50.4501, "longitude": 30.5234 },
+      "type": "urban",
+      "address": "вул. Хрещатик, 22",
+      "city": "Київ",
+      "isActive": true,
+      "installedAt": "2021-03-15"
+    }
+  ],
+  "meta": { "page": 1, "limit": 5, "total": 5, "totalPages": 1 }
+}
+```
+
+### GET `/api/stations/[id]`
+
+Детальна інформація про станцію зі статистикою.
+
+**Приклад запиту:**
+
+```EN
+GET /api/stations/station-001
+```
+
+**Приклад відповіді:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "station-001",
+    "name": "Хрещатик",
+    "type": "urban",
+    "city": "Київ",
+    "stats": {
+      "averageAqi": 65,
+      "minAqi": 28,
+      "maxAqi": 112,
+      "aqiLevel": "moderate",
+      "measurementCount": 168
+    }
+  }
+}
+```
+
+### GET `/api/measurements`
+
+Часові ряди вимірювань для конкретної станції.
+
+**Параметри запиту:**
+
+| Параметр | Тип | Опис |
+| --- | --- | --- |
+| `stationId` | string | **Обов'язковий.** ID станції |
+| `from` | string (ISO) | Початок періоду |
+| `to` | string (ISO) | Кінець періоду |
+| `sortBy` | `"timestamp" \| "aqi"` | Поле сортування |
+| `sortOrder` | `"asc" \| "desc"` | Напрямок сортування |
+| `page` | number | Номер сторінки |
+| `limit` | number | Кількість (1-100, за замовчуванням 24) |
+
+**Приклад запиту:**
+
+```EN
+GET /api/measurements?stationId=station-001&sortBy=timestamp&sortOrder=desc&limit=3
+```
+
+**Приклад відповіді:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "station-001-2026-03-14T11:00:00.000Z",
+      "stationId": "station-001",
+      "timestamp": "2026-03-14T11:00:00.000Z",
+      "data": {
+        "pm25": 15.2,
+        "pm10": 30.8,
+        "no2": 25.1,
+        "so2": 7.3,
+        "co": 1.0,
+        "o3": 48.5,
+        "aqi": 61
+      },
+      "aqiLevel": "moderate"
+    }
+  ],
+  "meta": { "page": 1, "limit": 3, "total": 168, "totalPages": 56 }
+}
+```
+
+### GET `/api/current`
+
+Поточні показники з усіх активних станцій.
+
+**Параметри:** `stationId` (опціональний) — для конкретної станції.
+
+**Приклад:**
+
+```EN
+GET /api/current
+```
+
+### Обробка помилок
+
+Всі API endpoints повертають стандартизовані помилки:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Станцію з id \"station-999\" не знайдено"
+  }
+}
+```
+
+Коди помилок: `NOT_FOUND` (404), `VALIDATION_ERROR` (400), `BAD_REQUEST` (400), `INTERNAL_ERROR` (500).
+
+## 5. Тестові дані
+
+Створено 7 моніторингових станцій у 3 містах:
+
+| Станція | Місто | Тип | Статус |
+| --- | --- | --- | --- |
+| Хрещатик | Київ | Міська | Активна |
+| Бессарабська площа | Київ | Транспортна | Активна |
+| Дарницький промвузол | Київ | Промислова | Активна |
+| Пуща-Водиця | Київ | Приміська | Активна |
+| Конча-Заспа | Київ | Сільська | Активна |
+| Площа Ринок | Львів | Міська | Активна |
+| Привокзальна | Дніпро | Транспортна | Неактивна |
+
+Для кожної станції генеруються 168 вимірювань (7 днів × 24 години) з реалістичними значеннями:
+
+- Базові рівні залежать від типу станції (промислова > транспортна > міська > приміська > сільська)
+- Значення модулюються часом доби (пік у години пік: 7-9, 17-19; мінімум вночі: 0-5)
+- Додається випадкове відхилення з детерміністичним seed для відтворюваності
+
+## 6. Ключові фрагменти коду
+
+### Типобезпечна відповідь API з дженериками
+
+```typescript
+// src/types/api.ts
+export interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+  meta?: PaginationMeta;
+}
+
+export interface ApiErrorResponse {
+  success: false;
+  error: {
+    code: ApiErrorCode;
+    message: string;
+    details?: string;
+  };
+}
+
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+```
+
+### SSR з `force-dynamic`
+
+```typescript
+// src/app/page.tsx
+export const dynamic = "force-dynamic"; // забезпечує серверний рендеринг при кожному запиті
+
+export default function HomePage() {
+  const stats = computeOverallStats(); // дані обчислюються на сервері
+  // ...
+}
+```
+
+### Динамічний роутинг
+
+```typescript
+// src/app/stations/[id]/page.tsx
+export default async function StationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const station = stations.find((s) => s.id === id);
+  if (!station) notFound(); // повертає 404
+  // ...
+}
+```
+
+### Генерація реалістичних даних
+
+```typescript
+// src/data/measurements.ts
+const baselinesByType: Record<StationType, AirQualityData> = {
+  urban:      { pm25: 18, pm10: 35, no2: 30, so2: 8,  co: 1.2, o3: 45, aqi: 65 },
+  traffic:    { pm25: 25, pm10: 45, no2: 45, so2: 10, co: 2.5, o3: 35, aqi: 85 },
+  industrial: { pm25: 30, pm10: 55, no2: 35, so2: 20, co: 1.8, o3: 40, aqi: 95 },
+  // ...
+};
+```
+
+## 7. Відповіді на контрольні питання
+
+### 1. Переваги серверного рендерингу для додатків з науковими даними
+
+SSR забезпечує кілька ключових переваг:
+
+- **Актуальність даних** — при кожному запиті сервер отримує найновіші дані з моніторингових станцій, що критично для екологічного моніторингу
+- **SEO-оптимізація** — пошукові системи індексують вже відрендерений HTML із даними, що покращує знаходження інформації
+- **Швидший First Contentful Paint** — користувач бачить дані одразу, без очікування завантаження JavaScript та окремих API-запитів
+- **Безпека** — серверна логіка обробки даних не потрапляє до клієнта, чутливі ключі API залишаються на сервері
+- **Зменшення навантаження на клієнт** — обчислення статистики, агрегація даних виконуються на сервері
+
+### 2. TypeScript та надійність коду з екологічними даними
+
+- **Інтерфейси** (`MonitoringStation`, `AirQualityData`) гарантують, що кожна структура даних містить усі необхідні поля з правильними типами
+- **Union types** (`AQILevel`, `StationType`) обмежують набір допустимих значень, запобігаючи помилкам при категоризації
+- **Дженерики** (`ApiResponse<T>`) забезпечують типобезпечну роботу з API на всіх рівнях додатку
+- **Strict mode** (`noUnusedLocals`, `noUncheckedIndexedAccess`) виявляє потенційні помилки на етапі компіляції
+- **Автодоповнення в IDE** — розробник завжди бачить доступні поля об'єкта, що зменшує ймовірність помилок
+
+### 3. SSR, SSG та ISR — коли що використовувати
+
+- **SSR (Server-Side Rendering)** — для сторінок з актуальними даними, що змінюються часто. *Приклад:* головна сторінка з поточними показниками AQI, сторінка деталей станції з останніми вимірюваннями
+- **SSG (Static Site Generation)** — для контенту, що рідко змінюється. *Приклад:* довідник забруднювачів, сторінка «Про проєкт», методологія обчислення AQI
+- **ISR (Incremental Static Regeneration)** — для даних, які оновлюються періодично. *Приклад:* щоденні звіти про якість повітря (ревалідація кожні 60 хвилин), рейтинг станцій за тиждень
+
+### 4. Принципи організації API для масштабованості
+
+- **RESTful архітектура** — ресурсоорієнтовані URL (`/api/stations`, `/api/measurements`)
+- **Стандартизовані відповіді** — єдиний формат `ApiResponse<T>` з типізованими помилками
+- **Пагінація** — `page`/`limit` параметри з метаданими `PaginationMeta` для великих наборів даних
+- **Фільтрація та сортування** — query-параметри для гнучкого доступу до даних
+- **Валідація входу** — перевірка обов'язкових параметрів з інформативними повідомленнями про помилки
+- **Розділення відповідальності** — дані, логіка та API розділені по різних модулях
+
+### 5. Типобезпечна взаємодія клієнт-сервер
+
+- Спільні типи в `src/types/` використовуються як на сервері (API routes), так і на клієнті (React-компоненти)
+- `ApiResponse<T>` з дискримінантним полем `success` дозволяє TypeScript звужувати тип через `if (response.success)`
+- Серверні компоненти Next.js мають прямий доступ до тих самих типів, що й API, без дублювання
+- Параметри маршрутів типізовані через `params: Promise<{ id: string }>` у Next.js 16
+
+## 8. Запуск проєкту
+
+```bash
+# Встановлення залежностей
+npm install
+
+# Режим розробки
+npm run dev
+
+# Збірка для production
+npm run build
+
+# Запуск production-сервера
+npm start
+```
+
+Додаток буде доступний за адресою: <http://localhost:3000>
+
+## 9. Висновки
+
+У ході виконання лабораторної роботи було створено повноцінний веб-додаток системи екологічного моніторингу з використанням Next.js 16, TypeScript та Tailwind CSS 4. Основні результати:
+
+1. **Налаштовано строгу типізацію TypeScript** з увімкненими опціями `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`, `noUncheckedIndexedAccess`, що забезпечує високу надійність коду.
+
+2. **Розроблено систему TypeScript інтерфейсів** для екологічних даних (7 інтерфейсів) та API (8 типів), включаючи використання дженериків та union types.
+
+3. **Реалізовано SSR-сторінки** (головна, деталі станції) з `force-dynamic` для актуальних даних та **SSG-сторінки** (про проєкт, довідник забруднювачів) для статичного контенту.
+
+4. **Створено 4 API endpoints** з валідацією, фільтрацією, сортуванням та пагінацією, що повертають стандартизовані типобезпечні відповіді.
+
+5. **Згенеровано реалістичні тестові дані** для 7 моніторингових станцій (1176 вимірювань) з урахуванням типу станції та часу доби.
+
+6. **Розроблено сучасний UI** з адаптивною версткою, кольоровою індикацією рівнів AQI та інтерактивними компонентами.
