@@ -29,6 +29,12 @@ export default function Header() {
               Головна
             </Link>
             <Link
+              href="/dashboard"
+              className="hover:text-emerald-200 transition-colors font-medium"
+            >
+              Моніторинг
+            </Link>
+            <Link
               href="/about"
               className="hover:text-emerald-200 transition-colors font-medium"
             >
