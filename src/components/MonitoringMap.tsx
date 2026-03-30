@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import type { MonitoringStation, Measurement } from "@/types";
+import { trackEvent } from "@/lib/analytics";
 import { getAqiColor, getAqiLabel } from "@/lib/aqi";
 import "leaflet/dist/leaflet.css";
 
@@ -10,7 +18,7 @@ interface MonitoringMapProps {
   stations: MonitoringStation[];
   latestMeasurements: Record<string, Measurement>;
   selectedStationId: string | null;
-  onStationSelect: (stationId: string | null) => void;
+  onStationSelect: (stationId: string | null, source?: string) => void;
 }
 
 const UKRAINE_CENTER: [number, number] = [49.5, 30.5];
@@ -34,6 +42,27 @@ function FlyToStation({
       map.flyTo(UKRAINE_CENTER, DEFAULT_ZOOM, { duration: 0.8 });
     }
   }, [station, map]);
+
+  return null;
+}
+
+function MapAnalytics() {
+  useMapEvents({
+    zoomend(event) {
+      trackEvent("map_interaction", {
+        action: "zoom",
+        zoom_level: event.target.getZoom(),
+      });
+    },
+    moveend(event) {
+      const center = event.target.getCenter();
+      trackEvent("map_interaction", {
+        action: "move",
+        latitude: Number(center.lat.toFixed(4)),
+        longitude: Number(center.lng.toFixed(4)),
+      });
+    },
+  });
 
   return null;
 }
@@ -71,6 +100,7 @@ export default function MonitoringMap({
       />
 
       <FlyToStation station={selectedStation} />
+      <MapAnalytics />
 
       {stations.map((station) => {
         const measurement = latestMeasurements[station.id];
@@ -91,7 +121,7 @@ export default function MonitoringMap({
               weight: isSelected ? 3 : 2,
             }}
             eventHandlers={{
-              click: () => onStationSelect(station.id),
+              click: () => onStationSelect(station.id, "map_marker"),
             }}
           >
             <Popup>
@@ -127,7 +157,7 @@ export default function MonitoringMap({
                 )}
                 <button
                   className="mt-2 w-full text-xs bg-emerald-600 text-white rounded py-1 hover:bg-emerald-700 transition-colors"
-                  onClick={() => onStationSelect(station.id)}
+                  onClick={() => onStationSelect(station.id, "map_popup")}
                 >
                   Показати графіки
                 </button>

@@ -6,6 +6,7 @@ import { getAqiLevel, getAqiLabel, getAqiBgClass } from "@/lib/aqi";
 import type { StationStats } from "@/types";
 import AqiGauge from "@/components/AqiGauge";
 import PollutantBar from "@/components/PollutantBar";
+import StationDetailTracker from "@/components/StationDetailTracker";
 
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,12 @@ export default async function StationPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <StationDetailTracker
+        stationId={station.id}
+        stationName={station.name}
+        city={station.city}
+        measurementCount={measurements.length}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
         <Link href="/" className="hover:text-emerald-600 transition-colors">

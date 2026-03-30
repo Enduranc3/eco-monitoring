@@ -3,6 +3,7 @@ import { stations } from "@/data/stations";
 import { getMeasurementsByStation, getLatestMeasurement } from "@/data/measurements";
 import type { Measurement } from "@/types";
 import DashboardClient from "@/components/DashboardClient";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const dynamic = "force-dynamic";
 
@@ -36,11 +37,13 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <DashboardClient
-        stations={activeStations}
-        latestMeasurements={latestMeasurements}
-        allMeasurements={allMeasurements}
-      />
+      <ErrorBoundary>
+        <DashboardClient
+          stations={activeStations}
+          latestMeasurements={latestMeasurements}
+          allMeasurements={allMeasurements}
+        />
+      </ErrorBoundary>
     </div>
   );
 }

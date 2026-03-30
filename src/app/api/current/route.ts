@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { stations } from "@/data/stations";
 import { getLatestMeasurement } from "@/data/measurements";
 import type { ApiResponse, Measurement, MonitoringStation } from "@/types";
+import { withApiLogging } from "@/lib/api-handler";
 
 type CurrentReading = Measurement & { station: MonitoringStation };
 
-export async function GET(request: NextRequest) {
+export const GET = withApiLogging("/api/current", async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const stationId = searchParams.get("stationId");
 
@@ -38,4 +39,4 @@ export async function GET(request: NextRequest) {
   };
 
   return NextResponse.json(response);
-}
+});

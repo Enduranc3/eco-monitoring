@@ -5,8 +5,9 @@ import {
 } from "@/data/measurements";
 import { stations } from "@/data/stations";
 import type { ApiResponse, PaginationMeta, Measurement } from "@/types";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET(request: NextRequest) {
+export const GET = withApiLogging("/api/measurements", async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
 
   const stationId = searchParams.get("stationId");
@@ -71,4 +72,4 @@ export async function GET(request: NextRequest) {
   };
 
   return NextResponse.json(response);
-}
+});
