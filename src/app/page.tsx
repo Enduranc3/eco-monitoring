@@ -48,11 +48,11 @@ export default function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Hero */}
-      <section className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">
+      <section className="mb-10 text-center">
+        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-4 sm:text-5xl">
           Моніторинг якості повітря
         </h1>
-        <p className="text-slate-600 text-lg">
+        <p className="text-slate-600 text-xl max-w-2xl mx-auto">
           Актуальні дані з моніторингових станцій у реальному часі
         </p>
       </section>

@@ -10,7 +10,7 @@ export default function Footer() {
             </p>
           </div>
           <div className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Верес Даніїл, ТР-32. Лабораторна робота №1
+            &copy; {new Date().getFullYear()} Верес Даніїл, ТР-32. Лабораторні роботи №1-2
           </div>
         </div>
       </div>
