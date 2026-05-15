@@ -6,9 +6,18 @@ import dynamic from "next/dynamic";
 import type { MonitoringStation, Measurement } from "@/types";
 import { getAqiColor, getAqiLabel } from "@/lib/aqi";
 import { trackEvent } from "@/lib/analytics";
-import AqiLineChart from "./AqiLineChart";
-import StationBarChart from "./StationBarChart";
-import PollutionPieChart from "./PollutionPieChart";
+const AqiLineChart = dynamic(() => import("./AqiLineChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center bg-slate-50 text-slate-400">Loading chart...</div>,
+});
+const StationBarChart = dynamic(() => import("./StationBarChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center bg-slate-50 text-slate-400">Loading chart...</div>,
+});
+const PollutionPieChart = dynamic(() => import("./PollutionPieChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center bg-slate-50 text-slate-400">Loading chart...</div>,
+});
 
 const MonitoringMap = dynamic(() => import("./MonitoringMap"), {
   ssr: false,
